@@ -16,6 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
+import asyncio
 from pprint import pformat
 from typing import List
 
@@ -73,11 +74,21 @@ class BinanceApi:
 
         self.api_server = api_server
         self.timeout = timeout
+        self.loop = asyncio.get_event_loop()
 
     def get_all_trades(self, pair: str) -> List[Trade]:
         assert(isinstance(pair, str))
 
         result = self._http_get("/api/v1/trades", f"symbol={pair}")
+        return list(map(lambda item: Trade(trade_id=int(item['id']),
+                                           timestamp=float(item['time']/1000),
+                                           price=Wad.from_number(item['price']),
+                                           amount=Wad.from_number(item['qty'])), result))
+
+    async def async_get_all_trades(self, pair: str) -> List[Trade]:
+        assert(isinstance(pair, str))
+
+        result = await self.loop.run_in_executor(None, self._http_get, "/api/v1/trades", f"symbol={pair}")
         return list(map(lambda item: Trade(trade_id=int(item['id']),
                                            timestamp=float(item['time']/1000),
                                            price=Wad.from_number(item['price']),
